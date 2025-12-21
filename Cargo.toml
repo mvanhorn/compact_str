@@ -5,6 +5,7 @@ members = [
     "examples/bytes",
     "examples/diesel",
     "examples/macros",
+    "examples/pyo3",
     "examples/serde",
     "examples/sqlx",
     "examples/traits",

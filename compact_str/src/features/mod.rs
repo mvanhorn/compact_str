@@ -16,6 +16,8 @@ mod diesel;
 mod markup;
 #[cfg(feature = "proptest")]
 mod proptest;
+#[cfg(feature = "pyo3")]
+mod pyo3;
 #[cfg(feature = "quickcheck")]
 mod quickcheck;
 #[cfg(feature = "rkyv")]
