@@ -9,8 +9,10 @@ use pyo3::types::PyString;
 use crate::CompactString;
 
 #[cfg_attr(docsrs, doc(cfg(feature = "pyo3")))]
-impl<'py> FromPyObject<'py> for CompactString {
-    fn extract_bound(obj: &Bound<'py, PyAny>) -> PyResult<Self> {
+impl<'a, 'py> FromPyObject<'a, 'py> for CompactString {
+    type Error = PyErr;
+
+    fn extract(obj: pyo3::Borrowed<'a, 'py, PyAny>) -> PyResult<Self> {
         let s: &str = obj.extract()?;
         Ok(CompactString::from(s))
     }
@@ -45,14 +47,17 @@ mod tests {
 
     use crate::CompactString;
 
-    fn init_python() {
-        pyo3::prepare_freethreaded_python();
+    fn with_py<F, R>(f: F) -> R
+    where
+        F: for<'py> FnOnce(Python<'py>) -> R,
+    {
+        Python::initialize();
+        Python::attach(f)
     }
 
     #[test]
     fn test_compact_string_into_py() {
-        init_python();
-        Python::with_gil(|py| {
+        with_py(|py| {
             let cs = CompactString::from("hello world");
             let py_str = cs.into_pyobject(py).unwrap();
             assert_eq!(py_str.to_str().unwrap(), "hello world");
@@ -61,8 +66,7 @@ mod tests {
 
     #[test]
     fn test_compact_string_ref_into_py() {
-        init_python();
-        Python::with_gil(|py| {
+        with_py(|py| {
             let cs = CompactString::from("hello world");
             let py_str = (&cs).into_pyobject(py).unwrap();
             assert_eq!(py_str.to_str().unwrap(), "hello world");
@@ -73,8 +77,7 @@ mod tests {
 
     #[test]
     fn test_compact_string_from_py() {
-        init_python();
-        Python::with_gil(|py| {
+        with_py(|py| {
             let py_str = PyString::new(py, "hello from python");
             let cs: CompactString = py_str.extract().unwrap();
             assert_eq!(cs.as_str(), "hello from python");
@@ -83,8 +86,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip() {
-        init_python();
-        Python::with_gil(|py| {
+        with_py(|py| {
             let original = CompactString::from("roundtrip test 🦀");
             let py_str = original.clone().into_pyobject(py).unwrap();
             let recovered: CompactString = py_str.extract().unwrap();
@@ -94,8 +96,7 @@ mod tests {
 
     #[test]
     fn test_empty_string() {
-        init_python();
-        Python::with_gil(|py| {
+        with_py(|py| {
             let cs = CompactString::new("");
             let py_str = cs.into_pyobject(py).unwrap();
             assert_eq!(py_str.to_str().unwrap(), "");
@@ -108,8 +109,7 @@ mod tests {
 
     #[test]
     fn test_unicode_string() {
-        init_python();
-        Python::with_gil(|py| {
+        with_py(|py| {
             let unicode_str = "Hello, 世界! 🎉 Привет мир";
             let cs = CompactString::from(unicode_str);
             let py_str = cs.into_pyobject(py).unwrap();
@@ -122,8 +122,7 @@ mod tests {
 
     #[test]
     fn test_inline_string() {
-        init_python();
-        Python::with_gil(|py| {
+        with_py(|py| {
             // Short string that should be stored inline (not on heap)
             let short = CompactString::from("hi");
             assert!(!short.is_heap_allocated());
@@ -136,8 +135,7 @@ mod tests {
 
     #[test]
     fn test_heap_string() {
-        init_python();
-        Python::with_gil(|py| {
+        with_py(|py| {
             // Long string that should be stored on the heap
             let long = CompactString::from("this is a longer string that won't fit inline");
             assert!(long.is_heap_allocated());
